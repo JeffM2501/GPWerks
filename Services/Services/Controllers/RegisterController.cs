@@ -17,6 +17,7 @@ namespace Services.Controllers
             return NotFound();
         }
 
+
         // POST api/values
         public IHttpActionResult Post([FromBody]RegistrationRequest request)
         {
@@ -26,8 +27,9 @@ namespace Services.Controllers
 
                 var user = query.FirstOrDefault<User>();
                 RegistrationResponce responce = new RegistrationResponce();
-                if (user == null)
+                if (user == null || string.IsNullOrEmpty(request.Credentials) || )
                 {
+                    Hasher.GenHash(request.Credentials)
                     responce.Ok = true;
                     responce.Result = request.Callsign;
                     responce.Token = new Random().Next().ToString();
