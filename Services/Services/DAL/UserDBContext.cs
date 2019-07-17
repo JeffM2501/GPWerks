@@ -12,7 +12,7 @@ namespace Services.DAL
     {
         public UserDBContext() : base("GPWerks_UserDBContext") { }
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<User> users { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {

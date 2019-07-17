@@ -23,13 +23,14 @@ namespace Services.Controllers
         {
             using (var context = new UserDBContext())
             {
-                var query = from usr in context.Users where usr.email == request.EmailAddress.ToLowerInvariant() select usr;
+            //    int count = context.Users.ToArray().Length;
+                var query = from usr in context.users where usr.email == request.EmailAddress.ToLowerInvariant() select usr;
 
                 var user = query.FirstOrDefault<User>();
                 RegistrationResponce responce = new RegistrationResponce();
-                if (user == null || string.IsNullOrEmpty(request.Credentials) || )
+                if (user == null && request.Valid())
                 {
-                    Hasher.GenHash(request.Credentials)
+                //    Hasher.GenHash(request.Credentials)
                     responce.Ok = true;
                     responce.Result = request.Callsign;
                     responce.Token = new Random().Next().ToString();
