@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,9 +18,14 @@ namespace ServiceCore.DataAccess
         public DbSet<AccessToken> access_tokens { get; set; }
         public DbSet<Callsign> callsigns { get; set; }
 
+        public DbSet<AnonUser> anon_users { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseMySQL("server=localhost;database=gpwerks_users;user=gpuser");
+            if (ConfigurationManager.ConnectionStrings["gpwerks_user_config"] != null)
+                optionsBuilder.UseMySQL(ConfigurationManager.ConnectionStrings["gpwerks_user_config"].ConnectionString);
+            else
+                optionsBuilder.UseMySQL("server=localhost;database=gpwerks_users;user=gpuser");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -32,6 +38,11 @@ namespace ServiceCore.DataAccess
             var userswithEmail = users.Where(s => s.email == email.ToLowerInvariant() && s.enabled != 0).ToList();
 
             return userswithEmail.FirstOrDefault<User>();
+        }
+
+        public bool ValidAnonName(string name)
+        {
+            return FindByEmail(name) == null && CallsignAvailable(name);
         }
 
         public User FindUserByToken(string token)

@@ -20,18 +20,43 @@ namespace ServiceCore.Controllers
             using (var context = new DataAccess.UserDBContext())
             {
                 var user = context.FindByEmail(value.EmailAddress);
+
                 if (user == null)
                     return Forbid();
 
-                var hasher = new PasswordHasher<User>();
-                var result = hasher.VerifyHashedPassword(user, user.hash, value.Credentials);
-                if (result == PasswordVerificationResult.Failed)
-                    return Forbid();
+                AccessToken tok = new AccessToken();
+                tok.user = user;
 
-                if (result == PasswordVerificationResult.SuccessRehashNeeded)
+                string callsign = string.Empty;
+
+                if (user.IsAnon())
                 {
-                    user.hash = hasher.HashPassword(user, value.Credentials);
-                    context.SaveChangesAsync();
+                    if (user.hash != value.Credentials)
+                        return Forbid();
+
+                    callsign = value.EmailAddress;
+                    tok.callsign_index = context.CallsignsForUser(user).First().callsign_id;
+                }
+                else
+                {
+                    var hasher = new PasswordHasher<User>();
+                    var result = hasher.VerifyHashedPassword(user, user.hash, value.Credentials);
+                    if (result == PasswordVerificationResult.Failed)
+                        return Forbid();
+
+                    if (result == PasswordVerificationResult.SuccessRehashNeeded)
+                    {
+                        user.hash = hasher.HashPassword(user, value.Credentials);
+                        context.SaveChangesAsync();
+                    }
+
+                    var callsigns = context.CallsignsForUser(user);
+                    var sign = callsigns.FirstOrDefault(x => x.callsign_id == value.CallsignIndex);
+                    if (sign == null)
+                        sign = callsigns.First();
+
+                    tok.callsign_index = sign.callsign_id;
+                    callsign = sign.name;
                 }
 
                 foreach (var token in context.AccessTokensForUser(user))
@@ -39,15 +64,14 @@ namespace ServiceCore.Controllers
                     token.expires = DateTime.MinValue;
                     context.SaveChangesAsync();
                 }
-
-                AccessToken tok = new AccessToken();
-                tok.user = user;
+               
                 tok.expires = DateTime.Now + new TimeSpan(0, 5, 0);
                 tok.token = context.GetAccessToken();
                 context.access_tokens.Add(tok);
+                user.last_used = DateTime.Now;
                 context.SaveChanges();
 
-                return Ok( new string[] { tok.token, tok.callsign_index.ToString() });
+                return Ok( new string[] { tok.token, callsign });
             }
         }
     }

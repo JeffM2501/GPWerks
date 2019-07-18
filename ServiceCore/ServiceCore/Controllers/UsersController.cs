@@ -20,7 +20,7 @@ namespace ServiceCore.Controllers
             using (var context = new DataAccess.UserDBContext())
             {
                 var user = context.FindUserByToken(token);
-                if (user == null)
+                if (user == null || user.IsAnon())
                     return NotFound();
 
                 List<string> responce = new List<string>();
@@ -39,7 +39,7 @@ namespace ServiceCore.Controllers
             using (var context = new DataAccess.UserDBContext())
             {
                 var user = context.FindUserByToken(request.Token);
-                if (user == null)
+                if (user == null || user.email == "ANON")
                     return Forbid();
 
                 switch (request.EditAction)

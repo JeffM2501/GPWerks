@@ -11,6 +11,8 @@ namespace ServiceCore.Models
         public string Credentials = string.Empty;
         public string Callsign = string.Empty;
 
+        public string AnonKey = string.Empty;
+
 
         public bool Valid()
         {

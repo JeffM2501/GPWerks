@@ -18,5 +18,14 @@ namespace ServiceCore.Models
         public int verified { get; set; }
 
         public string verification_token { get; set; }
+
+        public DateTime created { get; set; }
+        public DateTime last_used { get; set; }
+
+
+        public bool IsAnon()
+        {
+            return enabled != 0 && verified == 0 && verification_token == "ANON" && !email.Contains("@"); 
+        }
     }
 }

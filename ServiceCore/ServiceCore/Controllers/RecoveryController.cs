@@ -17,7 +17,7 @@ namespace ServiceCore.Controllers
             using (var context = new DataAccess.UserDBContext())
             {
                 var user = context.FindByEmail(email);
-                if (user == null)
+                if (user == null || user.IsAnon())
                     return Forbid();
 
                 user.verification_token = context.GenEmailToken();

@@ -22,30 +22,11 @@ namespace ServiceCore.Controllers
 
                 List<string> results = new List<string>();
                 results.Add(count.ToString());
-
-//                 foreach (var user in context.users)
-//                 {
-//                     results.Add(user.id.ToString());
-//                 }
-
                 return results.ToArray();
             }
                 
         }
 
-//         // GET api/values/5
-//         [HttpGet("{id}")]
-//         public string Get(int id)
-//         {
-//             using (var context = new DataAccess.UsersContext())
-//             {
-//                 var userswithEmail = context.users
-//                                       .Where(s => s.id == id)
-//                                       .ToList();
-// 
-//                 return userswithEmail.FirstOrDefault<User>()?.email;
-//             }
-//         }
 
         // POST api/values
         [HttpPost]
@@ -59,28 +40,55 @@ namespace ServiceCore.Controllers
                 if (value.Valid())
                 {
                     value.EmailAddress = value.EmailAddress.ToLowerInvariant();
-                    if (context.FindByEmail(value.EmailAddress) == null)
+                    if (context.FindByEmail(value.EmailAddress) != null)
                     {
                         var usr = new User();
-                        usr.email = value.EmailAddress.ToLowerInvariant();
-                        usr.hash = new PasswordHasher<User>().HashPassword(usr, value.Credentials);
-                        usr.enabled = 1;
-                        usr.verified = 0;
-                        usr.verification_token = context.GenEmailToken();
-                        context.users.Add(usr);
-
-                        int result = context.SaveChanges();
-
-                        newUserID = usr.user_id;
-
                         var callsign = new Callsign();
-                        callsign.enabled = 1;
-                        callsign.name = value.Callsign;
-                        callsign.created = DateTime.Now;
-                        callsign.user = usr;
 
-                        context.callsigns.Add(callsign);
-                        context.SaveChanges();
+                        if (!string.IsNullOrEmpty(value.AnonKey))
+                        {
+                            // they want to upgrade an anon callsign so don't make a new user or callsign
+                            var oldUser = context.FindByEmail(value.Callsign);
+                            if (oldUser != null && oldUser.IsAnon() && oldUser.hash == value.AnonKey)
+                            {
+                                usr = oldUser;
+                                callsign = context.CallsignsForUser(usr).FirstOrDefault();
+
+                                usr.email = value.EmailAddress.ToLowerInvariant();
+                                usr.verification_token = context.GenEmailToken();
+                                usr.hash = new PasswordHasher<User>().HashPassword(usr, value.Credentials);
+                                usr.verified = 0;
+
+                                newUserID = usr.user_id;
+                                context.SaveChanges();
+                            }
+                            else // bad upgrade, make them resubmit as a new registration
+                            {
+                                return Forbid();
+                            }
+                        }
+                        else
+                        {
+                            usr.email = value.EmailAddress.ToLowerInvariant();
+                            usr.hash = new PasswordHasher<User>().HashPassword(usr, value.Credentials);
+                            usr.enabled = 1;
+                            usr.created = DateTime.Now;
+                            usr.verified = 0;
+                            usr.verification_token = context.GenEmailToken();
+                            context.users.Add(usr);
+
+                            context.SaveChanges();
+
+                            newUserID = usr.user_id;
+                            
+                            callsign.enabled = 1;
+                            callsign.name = value.Callsign;
+                            callsign.created = DateTime.Now;
+                            callsign.user = usr;
+
+                            context.callsigns.Add(callsign);
+                            context.SaveChanges();
+                        }
 
                         responce.CallsignID = callsign.callsign_id;
 
@@ -115,20 +123,6 @@ namespace ServiceCore.Controllers
                 else
                     return NotFound(responce);
             }
-
-            return Forbid();
         }
-// 
-//         // PUT api/values/5
-//         [HttpPut("{id}")]
-//         public void Put(int id, [FromBody]string value)
-//         {
-//         }
-// 
-//         // DELETE api/values/5
-//         [HttpDelete("{id}")]
-//         public void Delete(int id)
-//         {
-//         }
     }
 }
