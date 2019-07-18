@@ -16,7 +16,7 @@ namespace ServiceCore.Controllers
         [HttpGet]
         public IEnumerable<string> Get()
         {
-            using (var context = new DataAccess.UsersContext())
+            using (var context = new DataAccess.UserDBContext())
             {
                 int count = context.users.ToArray().Length;
 
@@ -51,22 +51,58 @@ namespace ServiceCore.Controllers
         [HttpPost]
         public IActionResult Post([FromBody]RegistrationRequest value)
         {
-            using (var context = new DataAccess.UsersContext())
+            int newUserID = -1;
+            using (var context = new DataAccess.UserDBContext())
             {
                 RegistrationResponce responce = new RegistrationResponce();
 
                 if (value.Valid())
                 {
-                    var usr = new User();
-                    usr.email = value.EmailAddress.ToLowerInvariant();
-                    usr.hash = new PasswordHasher<User>().HashPassword(usr, value.Credentials);
-                    context.users.Add(usr);
+                    value.EmailAddress = value.EmailAddress.ToLowerInvariant();
+                    if (context.FindByEmail(value.EmailAddress) == null)
+                    {
+                        var usr = new User();
+                        usr.email = value.EmailAddress.ToLowerInvariant();
+                        usr.hash = new PasswordHasher<User>().HashPassword(usr, value.Credentials);
+                        usr.enabled = 1;
+                        usr.verified = 0;
+                        usr.verification_token = context.GenEmailToken();
+                        context.users.Add(usr);
 
-                    int result = context.SaveChanges();
+                        int result = context.SaveChanges();
 
-                   
+                        newUserID = usr.user_id;
 
-                    
+                        var callsign = new Callsign();
+                        callsign.enabled = 1;
+                        callsign.name = value.Callsign;
+                        callsign.created = DateTime.Now;
+                        callsign.user = usr;
+
+                        context.callsigns.Add(callsign);
+                        context.SaveChanges();
+
+                        responce.CallsignID = callsign.callsign_id;
+
+                        AccessToken tok = new AccessToken();
+                        tok.user = usr;
+                        tok.expires = DateTime.Now + new TimeSpan(0, 5, 0);
+                        tok.token = context.GetAccessToken();
+                        tok.callsign_index = callsign.callsign_id;
+                        context.access_tokens.Add(tok);
+                        context.SaveChanges();
+
+                        responce.OK = true;
+                        responce.Token = tok.token;
+                        responce.Result = callsign.name;
+
+                        Emailer.SendVerificationEmail(usr);
+                    }
+                    else
+                    {
+                        responce.OK = false;
+                        responce.Result = "UNAVAILBLE";
+                    }
                 }
                 else
                 {
@@ -74,22 +110,25 @@ namespace ServiceCore.Controllers
                     responce.Result = "INVALID";
                 }
 
-                return Ok(responce);
+                if (responce.OK)
+                    return Ok(responce);
+                else
+                    return NotFound(responce);
             }
 
-            return NotFound();
+            return Forbid();
         }
-
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody]string value)
-        {
-        }
-
-        // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
-        }
+// 
+//         // PUT api/values/5
+//         [HttpPut("{id}")]
+//         public void Put(int id, [FromBody]string value)
+//         {
+//         }
+// 
+//         // DELETE api/values/5
+//         [HttpDelete("{id}")]
+//         public void Delete(int id)
+//         {
+//         }
     }
 }

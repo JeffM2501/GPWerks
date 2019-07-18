@@ -10,5 +10,6 @@ namespace ServiceCore.Models
         public bool OK = false;
         public string Result = string.Empty;
         public string Token = string.Empty;
+        public int CallsignID = -1;
     }
 }

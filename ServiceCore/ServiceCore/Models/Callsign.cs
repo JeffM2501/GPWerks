@@ -6,17 +6,13 @@ using System.Threading.Tasks;
 
 namespace ServiceCore.Models
 {
-    public class User
+    public class Callsign
     {
         [Key]
-        public int user_id { get; set; }
-        public string email { get; set; }
-        public string hash { get; set; }
-
+        public int callsign_id { get; set; }
+        public User user { get; set; }
+        public string name { get; set; }
         public int enabled { get; set; }
-
-        public int verified { get; set; }
-
-        public string verification_token { get; set; }
+        public DateTime created { get; set; }
     }
 }
